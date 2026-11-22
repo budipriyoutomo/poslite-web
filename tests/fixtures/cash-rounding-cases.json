@@ -214,5 +214,41 @@
       "cash_charged": 4500,
       "rounding": 245
     }
+  },
+  {
+    "name": "refund partial in cash: what goes back is rounded like a sale",
+    "total": 36383,
+    "non_cash_paid": 0,
+    "unit": 100,
+    "mode": "nearest",
+    "expected": {
+      "cash_due": 36383,
+      "cash_charged": 36400,
+      "rounding": 17
+    }
+  },
+  {
+    "name": "refund of the whole order in cash: same as its sale",
+    "total": 72765,
+    "non_cash_paid": 0,
+    "unit": 500,
+    "mode": "nearest",
+    "expected": {
+      "cash_due": 72765,
+      "cash_charged": 73000,
+      "rounding": 235
+    }
+  },
+  {
+    "name": "refund in cash, mode down: what goes back is rounded down",
+    "total": 36383,
+    "non_cash_paid": 0,
+    "unit": 500,
+    "mode": "down",
+    "expected": {
+      "cash_due": 36383,
+      "cash_charged": 36000,
+      "rounding": -383
+    }
   }
 ]
