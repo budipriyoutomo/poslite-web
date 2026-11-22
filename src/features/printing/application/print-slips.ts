@@ -61,6 +61,7 @@ export async function printRefundSlip(refundId: string, deps: PrintDeps = defaul
         reason: refund.reason,
         lines: refund.lines,
         total: refund.total,
+        ...(refund.rounding && { rounding: refund.rounding }),
         payments: refund.payments.map((p) => ({ methodName: p.methodName, amount: p.amount, isCash: p.methodType === "cash" })),
       });
       return { doc, columns: ctx.columns };

@@ -189,6 +189,8 @@ export interface RefundRow {
   approvedBy: string | null;
   lines: { orderLineId: string; productName: string; quantity: number; amount: number }[];
   total: number;
+  /** Cash rounding (P1-3) on what went back in cash, may be negative; payments add up to total + rounding. */
+  rounding?: number;
   payments: { id: string; paymentMethodId: string; methodType: PaymentMethodType; methodName: string; amount: number; reference: string | null }[];
   syncStatus: "pending" | "synced";
   flags: string[];

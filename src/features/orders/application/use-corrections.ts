@@ -24,6 +24,11 @@ export function usePaymentMethods() {
   return useLiveQuery(() => getDb().paymentMethods.orderBy("sortOrder").toArray(), []) ?? [];
 }
 
+/** The outlet's cash rounding (P1-3), to show the rounded cash a refund gives back. */
+export function useCashRounding() {
+  return useLiveQuery(async () => (await getDb().settings.get("outlet"))?.value.cashRounding, []);
+}
+
 /** Online lookup of an order of this outlet from any device; null in demo mode. */
 export async function lookupOrder(receiptNo: string) {
   const device = await readState(getDb(), "device");

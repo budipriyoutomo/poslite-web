@@ -14,7 +14,7 @@ import { formatRupiah } from "@/shared/money";
 import { Button } from "@/shared/ui/button";
 
 import { localRefundSource, refundOrder, voidOrder } from "../application/correct-order";
-import { useApprovers, usePaymentMethods, verifyApprover } from "../application/use-corrections";
+import { useApprovers, useCashRounding, usePaymentMethods, verifyApprover } from "../application/use-corrections";
 import { copy } from "../copy";
 import type { RefundSource } from "../domain/refund-plan";
 import { voidBlocker } from "../domain/void-rules";
@@ -30,6 +30,7 @@ export function OrderCorrections({ order, payments, refunds }: { order: OrderRow
   const [dialog, setDialog] = useState<"void" | { source: RefundSource } | null>(null);
   const approvers = useApprovers();
   const methods = usePaymentMethods();
+  const cashRounding = useCashRounding();
   if (!user) return null;
   const actorIsManager = isManager(user.role);
   const canVoid = voidBlocker({ status: order.status, deviceId: "here", shiftId: order.shiftId }, { deviceId: "here", openShiftId: shift?.id ?? null, refunded: refunds.length > 0 }) === null;
@@ -86,6 +87,7 @@ export function OrderCorrections({ order, payments, refunds }: { order: OrderRow
         <RefundDialog
           source={dialog.source}
           methods={methods}
+          {...(cashRounding && { cashRounding })}
           defaultMethodId={payments[0]?.paymentMethodId ?? methods[0]?.id ?? ""}
           actorIsManager={actorIsManager}
           approvers={approvers}

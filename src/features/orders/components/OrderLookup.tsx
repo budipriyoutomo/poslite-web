@@ -11,7 +11,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 
 import { refundOrder } from "../application/correct-order";
-import { lookupOrder, useApprovers, usePaymentMethods, verifyApprover } from "../application/use-corrections";
+import { lookupOrder, useApprovers, useCashRounding, usePaymentMethods, verifyApprover } from "../application/use-corrections";
 import { copy } from "../copy";
 import type { LookedUpOrder } from "../domain/refund-plan";
 import { RefundDialog } from "./RefundDialog";
@@ -21,6 +21,7 @@ export function OrderLookup() {
   const isOnline = useOnlineStatus();
   const user = useSession((s) => s.user);
   const methods = usePaymentMethods();
+  const cashRounding = useCashRounding();
   const approvers = useApprovers();
   const [receiptNo, setReceiptNo] = useState("");
   const [found, setFound] = useState<LookedUpOrder | null>(null);
@@ -48,6 +49,7 @@ export function OrderLookup() {
         <RefundDialog
           source={found.source}
           methods={methods}
+          {...(cashRounding && { cashRounding })}
           defaultMethodId={methods.find((m) => found.paymentMethodIds.includes(m.id))?.id ?? methods[0]?.id ?? ""}
           actorIsManager={isManager(user.role)}
           approvers={approvers}

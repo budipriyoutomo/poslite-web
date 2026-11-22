@@ -12,8 +12,8 @@ const SOURCE = {
   lines: [{ id: "L1", productName: "Nasi Gudeg", quantity: 2, gross: 70_000, lineDiscount: 0, refunded: 0 }],
 };
 const METHODS = [
-  { id: "PM1", name: "Tunai" },
-  { id: "PM2", name: "QRIS" },
+  { id: "PM1", name: "Tunai", type: "cash" as const },
+  { id: "PM2", name: "QRIS", type: "qris" as const },
 ];
 const MANAGER = { id: "U2", name: "Bu Rina" };
 
@@ -73,5 +73,16 @@ describe("RefundDialog (ADR-023)", () => {
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ approvedBy: null })));
     expect(screen.queryByLabelText("PIN manajer")).not.toBeInTheDocument();
+  });
+
+  it("shows the cash to give back rounded like a sale, and a non-cash refund exactly (P1-3)", async () => {
+    open({ actorIsManager: true, cashRounding: { unit: 100, mode: "nearest" } });
+    await userEvent.click(screen.getByRole("button", { name: "Tambah Nasi Gudeg" }));
+
+    expect(screen.getByRole("button", { name: "Refund Rp 36.400" })).toBeInTheDocument();
+    expect(screen.getByText("Pembulatan")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Dikembalikan lewat"), "PM2");
+    expect(screen.getByRole("button", { name: "Refund Rp 36.383" })).toBeInTheDocument();
   });
 });

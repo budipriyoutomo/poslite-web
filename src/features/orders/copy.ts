@@ -10,6 +10,7 @@ export const copy = {
   confirmVoid: "Void transaksi",
   confirmRefund: (amount: string) => `Refund ${amount}`,
   refundMethod: "Dikembalikan lewat",
+  refundRounding: "Pembulatan",
   approver: "Manajer yang menyetujui",
   approverPin: "PIN manajer",
   approve: "Setujui",

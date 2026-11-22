@@ -1,3 +1,4 @@
+import { cashRounding, type CashRoundingRule, NO_ROUNDING } from "@/features/checkout";
 import { businessDate, getOpenShift } from "@/features/shift";
 import { enqueueEvent } from "@/features/sync";
 import type { PosDb, RefundRow } from "@/shared/db";
@@ -61,6 +62,12 @@ export async function voidOrder(
   });
 }
 
+/** Cash goes back rounded with the outlet's rule, like a sale (P1-3); other methods exactly. */
+export function refundGivenBack(total: number, methodType: string | undefined, rule: CashRoundingRule | undefined): { givenBack: number; rounding: number } {
+  const { cashCharged, rounding } = cashRounding(total, 0, methodType === "cash" ? (rule ?? NO_ROUNDING) : NO_ROUNDING);
+  return { givenBack: cashCharged, rounding };
+}
+
 /** A local order of this device with what was refunded of it here (≤ 30 days of history). */
 export async function localRefundSource(db: PosDb, orderId: string): Promise<RefundSource> {
   const order = await db.orders.get(orderId);
@@ -104,6 +111,9 @@ export async function refundOrder(
     const plan = planRefund(source, input.picks);
     if (plan.lines.length === 0) throw new AppError("NOTHING_TO_REFUND");
 
+    const rule = method.type === "cash" ? (outlet.cashRounding ?? NO_ROUNDING) : NO_ROUNDING;
+    const { givenBack, rounding } = refundGivenBack(plan.total, method.type, rule);
+
     const now = deps.now();
     const date = businessDate(now, outlet.timezone, outlet.businessDayCutoff);
     const counter = nextReceiptCounter(await readState(db, "refundCounter"), date);
@@ -120,7 +130,8 @@ export async function refundOrder(
       approvedBy: input.approvedBy,
       lines: plan.lines,
       total: plan.total,
-      payments: [{ id: deps.newId(), paymentMethodId: method.id, methodType: method.type, methodName: method.name, amount: plan.total, reference: null }],
+      ...(rounding !== 0 && { rounding }),
+      payments: [{ id: deps.newId(), paymentMethodId: method.id, methodType: method.type, methodName: method.name, amount: givenBack, reference: null }],
       syncStatus: "pending",
       flags: [],
       createdAt: now.toISOString(),
@@ -141,6 +152,7 @@ export async function refundOrder(
         lines: refund.lines.map((l) => ({ order_line_id: l.orderLineId, quantity: l.quantity, amount: l.amount })),
         total: refund.total,
         payments: refund.payments.map((p) => ({ id: p.id, payment_method_id: p.paymentMethodId, method_type: p.methodType, method_name: p.methodName, amount: p.amount, reference: p.reference })),
+        ...(rule.unit > 0 && { cash_rounding: { unit: rule.unit, mode: rule.mode, amount: rounding } }),
       },
     });
     return refund;

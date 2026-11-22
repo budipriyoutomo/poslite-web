@@ -112,6 +112,51 @@ describe("refundOrder (ADR-023)", () => {
     expect((await closeShift({ closedBy: IDS.cashier, countedCash: 100_000 }, testDeps(db))).variance).toBe(0);
   });
 
+  describe("cash given back is rounded like a sale (P1-3)", () => {
+    const roundTo = async (unit: number, mode: "nearest" | "down" = "nearest") => {
+      const outlet = (await db.settings.get("outlet"))!.value;
+      await db.settings.put({ key: "outlet", value: { ...outlet, cashRounding: { unit, mode } } });
+    };
+
+    it("rounds the cash part and queues the rule with what it added", async () => {
+      await roundTo(100);
+
+      const refund = await refundOne();
+
+      expect([refund.total, refund.rounding, refund.payments[0]!.amount]).toEqual([36_383, 17, 36_400]);
+      const [event] = await outboxOf("order.refunded");
+      expect(event!.payload).toMatchObject({ total: 36_383, payments: [{ amount: 36_400 }], cash_rounding: { unit: 100, mode: "nearest", amount: 17 } });
+    });
+
+    it("rounds down when the outlet rounds down", async () => {
+      await roundTo(500, "down");
+
+      expect((await refundOne()).payments[0]!.amount).toBe(36_000);
+    });
+
+    it("gives back a non-cash refund exactly, without a rule in the event", async () => {
+      await roundTo(100);
+
+      const refund = await refundOrder(
+        { source: await localRefundSource(db, order.id), picks: { [order.lines[0]!.id]: 1 }, paymentMethodId: IDS.qrisMethod, reason: "Pelanggan komplain", actorId: IDS.cashier, approvedBy: IDS.manager },
+        testDeps(db),
+      );
+
+      expect([refund.rounding ?? 0, refund.payments[0]!.amount]).toEqual([0, 36_383]);
+      expect((await outboxOf("order.refunded"))[0]!.payload).not.toHaveProperty("cash_rounding");
+    });
+
+    it("the drawer expects the rounded cash to have left", async () => {
+      await roundTo(100);
+      await refundOne();
+
+      const closed = await closeShift({ closedBy: IDS.cashier, countedCash: 136_365 }, testDeps(db));
+
+      // 100.000 opening + 100.000 paid − 27.235 change − 36.400 given back
+      expect([closed.expectedCash, closed.variance]).toEqual([136_365, 0]);
+    });
+  });
+
   it("needs an open shift: the cash comes from today's drawer", async () => {
     await closeShift({ closedBy: IDS.cashier, countedCash: 172_765 }, testDeps(db));
 

@@ -8,6 +8,9 @@ import { Button } from "@/shared/ui/button";
 import { type ApprovalCheck, ApprovalField, type Approver } from "@/shared/ui/approval-field";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 
+import type { CashRoundingRule } from "@/features/checkout";
+
+import { refundGivenBack } from "../application/correct-order";
 import { copy } from "../copy";
 import { planRefund, type RefundSource } from "../domain/refund-plan";
 import { checkReason, type Reason } from "../domain/void-rules";
@@ -27,6 +30,7 @@ export function RefundDialog({
   source,
   methods,
   defaultMethodId,
+  cashRounding,
   actorIsManager,
   approvers,
   verifyApprover,
@@ -34,8 +38,10 @@ export function RefundDialog({
   onClose,
 }: {
   source: RefundSource;
-  methods: { id: string; name: string }[];
+  methods: { id: string; name: string; type?: string }[];
   defaultMethodId: string;
+  /** The outlet's cash rounding (P1-3): cash goes back rounded like a sale. */
+  cashRounding?: CashRoundingRule;
   actorIsManager: boolean;
   approvers: Approver[];
   verifyApprover: ApprovalCheck;
@@ -49,6 +55,7 @@ export function RefundDialog({
   const [approvedBy, setApprovedBy] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const plan = planRefund(source, picks);
+  const { givenBack, rounding } = refundGivenBack(plan.total, methods.find((m) => m.id === methodId)?.type, cashRounding);
   const text = reason ? checkReason(reason, other) : null;
   const canRefund = plan.lines.length > 0 && text !== null && (actorIsManager || approvedBy !== null) && !isSaving;
   const step = (lineId: string, by: number) => setPicks((p) => ({ ...p, [lineId]: (p[lineId] ?? 0) + by }));
@@ -104,9 +111,15 @@ export function RefundDialog({
         </label>
         <ReasonField reason={reason} other={other} onChange={(r, o) => (setReason(r), setOther(o))} />
         {!actorIsManager && <ApprovalField approvers={approvers} verifyApprover={verifyApprover} approvedBy={approvedBy} onApproved={setApprovedBy} />}
+        {rounding !== 0 && (
+          <p className="flex justify-between text-sm text-muted-foreground">
+            <span>{copy.refundRounding}</span>
+            <span className="tabular-nums">{formatRupiah(rounding)}</span>
+          </p>
+        )}
         <DialogFooter>
           <Button className="w-full" disabled={!canRefund} onClick={confirm}>
-            {copy.confirmRefund(formatRupiah(plan.total))}
+            {copy.confirmRefund(formatRupiah(givenBack))}
           </Button>
         </DialogFooter>
       </DialogContent>

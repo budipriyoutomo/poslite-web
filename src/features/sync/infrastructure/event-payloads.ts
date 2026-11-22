@@ -37,6 +37,9 @@ const discount = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("fixed"), value: rupiah }),
 ]);
 
+/** P1-3: the outlet's cash rounding rule at the time, and what it added to the cash (may be < 0). */
+const cashRoundingSnapshot = z.strictObject({ unit: z.union([z.literal(100), z.literal(500), z.literal(1000)]), mode: z.enum(["nearest", "down"]), amount: z.number().int() });
+
 export const orderPlaced = z.strictObject({
   shift_id: ulid,
   receipt_no: z.string().min(1),
@@ -79,7 +82,7 @@ export const orderPlaced = z.strictObject({
   queue_no: z.string().min(1).max(20).optional(),
   customer_name: z.string().min(1).max(40).optional(),
   // P1-3: the outlet's cash rounding as sold with, and what it added to the cash part (may be < 0).
-  cash_rounding: z.strictObject({ unit: z.union([z.literal(100), z.literal(500), z.literal(1000)]), mode: z.enum(["nearest", "down"]), amount: z.number().int() }).optional(),
+  cash_rounding: cashRoundingSnapshot.optional(),
   // ADR-031: a full payment of a table-service outlet's shared bill closes it on the server.
   closes_bill_id: ulid.optional(),
 });
@@ -98,6 +101,7 @@ export const orderVoided = z.strictObject({
 });
 
 // A refund is its own document (ADR-023): lines by order line, amounts from the shared allocation.
+// Cash given back is rounded like a sale (P1-3): payments add up to total + cash_rounding.amount.
 export const orderRefunded = z
   .strictObject({
     order_id: ulid,
@@ -120,8 +124,12 @@ export const orderRefunded = z
         }),
       )
       .min(1),
+    cash_rounding: cashRoundingSnapshot.optional(),
   })
-  .refine((r) => r.payments.reduce((s, p) => s + p.amount, 0) === r.total, { message: "payments must add up to the refund total", path: ["payments"] });
+  .refine((r) => r.payments.reduce((s, p) => s + p.amount, 0) === r.total + (r.cash_rounding?.amount ?? 0), {
+    message: "payments must add up to the refund total plus its cash rounding",
+    path: ["payments"],
+  });
 
 // Items cancelled from an open bill after the kitchen had them (ADR-028); the bill stays local.
 export const billItemVoided = z.strictObject({

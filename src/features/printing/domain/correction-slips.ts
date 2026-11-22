@@ -31,6 +31,8 @@ export interface RefundSlipInput {
   reason: string;
   lines: SlipLine[];
   total: number;
+  /** Cash rounding (P1-3) on what went back in cash; may be negative. */
+  rounding?: number;
   payments: { methodName: string; amount: number; isCash: boolean }[];
 }
 
@@ -76,6 +78,7 @@ export function buildRefundSlip(input: RefundSlipInput): ReceiptDocument {
     ...items(input.lines),
     { kind: "rule" },
     { kind: "row", left: "TOTAL REFUND", right: amount(input.total), bold: true },
+    ...(input.rounding ? [{ kind: "row", left: "Pembulatan", right: amount(input.rounding) } satisfies ReceiptBlock] : []),
     ...input.payments.map((p): ReceiptBlock => ({ kind: "row", left: `Dikembalikan: ${p.methodName}`, right: amount(p.amount) })),
     ...(nonCash.length > 0 ? [text(`* Kembalikan ${nonCash.join(", ")} manual di EDC/aplikasi bank`)] : []),
     ...signature,

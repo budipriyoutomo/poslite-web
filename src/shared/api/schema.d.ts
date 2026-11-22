@@ -4402,6 +4402,8 @@ export interface components {
             refund_no: string;
             /** Refunded By */
             refunded_by: string;
+            /** Rounding Amount */
+            rounding_amount: number;
             /** Shift Id */
             shift_id: string;
             /** Total */
@@ -4450,6 +4452,8 @@ export interface components {
             refund_no: string;
             /** Refunded By */
             refunded_by: string;
+            /** Rounding Amount */
+            rounding_amount: number;
             /** Shift Id */
             shift_id: string;
             /** Total */
@@ -4483,6 +4487,8 @@ export interface components {
             id: string;
             /** Refund No */
             refund_no: string;
+            /** Rounding Amount */
+            rounding_amount: number;
             /** Total */
             total: number;
         };

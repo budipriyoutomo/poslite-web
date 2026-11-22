@@ -101,6 +101,12 @@ describe("refund slip (58 mm)", () => {
     expect(text).toMatch(/Kembalikan Debit BCA manual di\s+EDC\/aplikasi bank/);
   });
 
+  it("shows the cash rounding between the total and the cash given back (P1-3)", () => {
+    const text = renderText(buildRefundSlip({ ...refundInput, rounding: -500, payments: [{ methodName: "Tunai", amount: 31_000, isCash: true }] }), 32);
+
+    expect(text).toEqual(expect.arrayContaining(["TOTAL REFUND              31.500", "Pembulatan                  -500", "Dikembalikan: Tunai       31.000"]));
+  });
+
   it("fits 80 mm paper", () => {
     expect(renderText(buildRefundSlip(refundInput), 48)).toContain("TOTAL REFUND                              31.500");
   });
